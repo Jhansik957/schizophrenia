@@ -27,28 +27,16 @@ import pandas as pd
 import streamlit as st
 
 def build_model(input_data):
-    # Reads in saved regression model using joblib
-    load_model = joblib.load('model.joblib')
-    
+    # Reads in saved regression model
+    load_model = pickle.load(open('model.joblib', 'rb'))
     # Apply model to make predictions
     prediction = load_model.predict(input_data)
-    
-    # Display prediction output
     st.header('**Prediction output**')
     prediction_output = pd.Series(prediction, name='pIC50')
-    
-    # Assuming `load_data` is a variable holding your data, 
-    # with molecule names in the second column
     molecule_name = pd.Series(load_data[1], name='molecule_name')
-    
-    # Combine molecule names and predictions into a DataFrame
     df = pd.concat([molecule_name, prediction_output], axis=1)
-    
-    # Display DataFrame
     st.write(df)
-    
-    # Provide download link for the DataFrame as a file
-    st.markdown(filedownload(df), unsafe_allow_html=True)
+    st.markdown(filedownload(df), unsafe_allow_html=True) 
 
 
 # Logo image
