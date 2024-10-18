@@ -58,7 +58,7 @@ st.image(image, use_column_width=True)
 
 # Page title
 st.markdown("""
-# Bioactivity Prediction App (Excitatory Amino Acid Transporter 3)
+# SchizoDock: A Bioactivity Prediction App (Excitatory Amino Acid Transporter 3)
 
 This app allows you to predict the bioactivity towards inhibiting the `EAAT3` enzyme. `EAAT3` is a drug target for Schizophrenia.
 
