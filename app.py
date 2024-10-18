@@ -58,12 +58,12 @@ st.image(image, use_column_width=True)
 
 # Page title
 st.markdown("""
-# Bioactivity Prediction App (Acetylcholinesterase)
+# Bioactivity Prediction App (Excitatory Amino Acid Transporter 3)
 
-This app allows you to predict the bioactivity towards inhibiting the `Acetylcholinesterase` enzyme. `Acetylcholinesterase` is a drug target for Alzheimer's disease.
+This app allows you to predict the bioactivity towards inhibiting the `EAAT3` enzyme. `EAAT3` is a drug target for Schizophrenia.
 
 **Credits**
-- App built in `Python` + `Streamlit` by [Chanin Nantasenamat](https://medium.com/@chanin.nantasenamat) (aka [Data Professor](http://youtube.com/dataprofessor))
+- App built in `Python` + `Streamlit` by [Sohith](https://sohithpydev.github.io/sohith/)
 - Descriptor calculated using [PaDEL-Descriptor](http://www.yapcwsoft.com/dd/padeldescriptor/) [[Read the Paper]](https://doi.org/10.1002/jcc.21707).
 ---
 """)
