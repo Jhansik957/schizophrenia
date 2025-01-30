@@ -1,113 +1,47 @@
 import streamlit as st
 import pandas as pd
-from PIL import Image
-import subprocess
+from Bio import SeqIO
 import os
 import base64
-import joblib  # Use joblib for loading the model
 
-# Molecular descriptor calculator
-def desc_calc():
-    try:
-        # Perform descriptor calculation
-        bashCommand = (
-            "java -Xms2G -Xmx2G -Djava.awt.headless=true -jar ./PaDEL-Descriptor/PaDEL-Descriptor.jar "
-            "-removesalt -standardizenitro -fingerprints "
-            "-descriptortypes ./PaDEL-Descriptor/PubchemFingerprinter.xml -dir ./ -file descriptors_output.csv"
-        )
-        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
-        if process.returncode != 0:
-            st.error(f"Error in descriptor calculation: {error.decode()}")
-        os.remove('molecule.smi')
-    except Exception as e:
-        st.error(f"An error occurred during descriptor calculation: {e}")
+def generate_grnas(sequence, pam="NGG"):
+    """Generate gRNAs with PAM sequences"""
+    grnas = []
+    pam_length = len(pam)
+    for i in range(len(sequence) - pam_length):
+        if sequence[i + pam_length : i + 2 * pam_length] == pam:
+            grnas.append(sequence[i : i + 20])  # Typical gRNA length is 20bp
+    return grnas
 
-# File download
-def filedownload(df):
-    csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()  # strings <-> bytes conversions
-    href = f'<a href="data:file/csv;base64,{b64}" download="prediction.csv">Download Predictions</a>'
+def analyze_off_targets(grnas):
+    """Placeholder for off-target analysis using CRISPOR or CRISPResso"""
+    # This function should integrate actual tools for off-target prediction
+    return [f"Predicted off-targets for {grna}" for grna in grnas]
+
+def file_download(data, filename="output.csv"):
+    """Generate a downloadable link for the results."""
+    csv = data.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download CSV File</a>'
     return href
 
-# Model building
-def build_model(input_data):
-    try:
-        # Load the model
-        load_model = joblib.load('model.joblib')
+# Streamlit UI
+st.title("CRISPR Design Tool")
+st.write("Upload a FASTA file to analyze gRNA sequences and predict off-target effects.")
+
+uploaded_file = st.file_uploader("Upload FASTA file", type=["fasta", "fa"])
+if uploaded_file is not None:
+    fasta_sequences = list(SeqIO.parse(uploaded_file, "fasta"))
+    results = []
+    
+    for seq_record in fasta_sequences:
+        sequence = str(seq_record.seq)
+        grnas = generate_grnas(sequence)
+        off_targets = analyze_off_targets(grnas)
         
-        # Ensure the input data is in the correct format
-        if hasattr(load_model, 'predict'):
-            # Apply model to make predictions
-            prediction = load_model.predict(input_data)
-            st.header('**Prediction output**')
-            prediction_output = pd.Series(prediction, name='pIC50')
-            molecule_name = pd.Series(load_data[1], name='molecule_name')
-            df = pd.concat([molecule_name, prediction_output], axis=1)
-            st.write(df)
-            st.markdown(filedownload(df), unsafe_allow_html=True)
-        else:
-            st.error("The loaded object is not a valid model.")
-    except Exception as e:
-        st.error(f"An error occurred while building the model: {e}")
-
-# Logo image
-image = Image.open('logo.png')
-
-st.image(image, use_column_width=True)
-
-# Page title
-st.markdown("""
-# SchizoDock: A Bioactivity Prediction App (Excitatory Amino Acid Transporter 3)
-
-This app allows you to predict the bioactivity towards inhibiting the `EAAT3` enzyme. `EAAT3` is a drug target for Schizophrenia.
-
-**Credits**
-- App built in `Python` + `Streamlit` by [Sohith](https://sohithpydev.github.io/sohith/)
-- Descriptor calculated using [PaDEL-Descriptor](http://www.yapcwsoft.com/dd/padeldescriptor/) [[Read the Paper]](https://doi.org/10.1002/jcc.21707).
----
-""")
-
-# Sidebar
-with st.sidebar.header('1. Upload your CSV data'):
-    uploaded_file = st.sidebar.file_uploader("Upload your input file", type=['txt'])
-    st.sidebar.markdown("""
-[Example input file](https://raw.githubusercontent.com/dataprofessor/bioactivity-prediction-app/main/example_acetylcholinesterase.txt)
-""")
-
-if st.sidebar.button('Predict'):
-    if uploaded_file is not None:
-        load_data = pd.read_table(uploaded_file, sep=' ', header=None)
-        load_data.to_csv('molecule.smi', sep='\t', header=False, index=False)
-
-        st.header('**Original input data**')
-        st.write(load_data)
-
-        with st.spinner("Calculating descriptors..."):
-            desc_calc()
-
-        # Read in calculated descriptors and display the dataframe
-        st.header('**Calculated molecular descriptors**')
-        if os.path.exists('descriptors_output.csv'):
-            desc = pd.read_csv('descriptors_output.csv')
-            st.write(desc)
-            st.write(desc.shape)
-
-            # Read descriptor list used in previously built model
-            st.header('**Subset of descriptors from previously built models**')
-            if os.path.exists('descriptor_list.csv'):
-                Xlist = list(pd.read_csv('descriptor_list.csv').columns)
-                desc_subset = desc[Xlist]
-                st.write(desc_subset)
-                st.write(desc_subset.shape)
-
-                # Apply trained model to make prediction on query compounds
-                build_model(desc_subset)
-            else:
-                st.error("Descriptor list file not found.")
-        else:
-            st.error("Descriptor output file not found.")
-    else:
-        st.error("Please upload a file to proceed.")
-else:
-    st.info('Upload input data in the sidebar to start!')
+        for grna, off_target in zip(grnas, off_targets):
+            results.append([seq_record.id, grna, off_target])
+    
+    df_results = pd.DataFrame(results, columns=["Sequence ID", "gRNA", "Off-Target Predictions"])
+    st.write(df_results)
+    st.markdown(file_download(df_results), unsafe_allow_html=True)
